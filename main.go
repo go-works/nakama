@@ -20,6 +20,8 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
+	"github.com/heroiclabs/nakama/v3/migrate"
+	"github.com/jackc/pgx/v5/stdlib"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -34,7 +36,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/heroiclabs/nakama/v3/console"
 	"github.com/heroiclabs/nakama/v3/ga"
-	"github.com/heroiclabs/nakama/v3/migrate"
 	"github.com/heroiclabs/nakama/v3/server"
 	"github.com/heroiclabs/nakama/v3/social"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -68,13 +69,34 @@ func main() {
 
 	tmpLogger := server.NewJSONLogger(os.Stdout, zapcore.InfoLevel, server.JSONFormat)
 
+	ctx, ctxCancelFn := context.WithCancel(context.Background())
+
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "--version":
 			fmt.Println(semver)
 			return
 		case "migrate":
-			migrate.Parse(os.Args[2:], tmpLogger)
+			config := server.ParseArgs(tmpLogger, os.Args[2:])
+			server.ValidateConfigDatabase(tmpLogger, config)
+			db := server.DbConnect(ctx, tmpLogger, config, false)
+			defer db.Close()
+
+			conn, err := db.Conn(ctx)
+			if err != nil {
+				tmpLogger.Fatal("Failed to acquire db conn for migration", zap.Error(err))
+			}
+
+			err = conn.Raw(func(driverConn any) error {
+				conn := driverConn.(*stdlib.Conn).Conn()
+				migrate.Parse(ctx, tmpLogger, conn, os.Args[2:])
+
+				return nil
+			})
+			if err != nil {
+				tmpLogger.Fatal("Failed to acquire pgx conn for migration", zap.Error(err))
+			}
+
 			return
 		case "check":
 			// Parse any command line args to look up runtime path.
@@ -98,7 +120,7 @@ func main() {
 
 	config := server.ParseArgs(tmpLogger, os.Args)
 	logger, startupLogger := server.SetupLogging(tmpLogger, config)
-	configWarnings := server.CheckConfig(logger, config)
+	configWarnings := server.ValidateConfig(logger, config)
 
 	startupLogger.Info("Nakama starting")
 	startupLogger.Info("Node", zap.String("name", config.GetName()), zap.String("version", semver), zap.String("runtime", runtime.Version()), zap.Int("cpu", runtime.NumCPU()), zap.Int("proc", runtime.GOMAXPROCS(0)))
@@ -123,14 +145,22 @@ func main() {
 	}
 	startupLogger.Info("Database connections", zap.Strings("dsns", redactedAddresses))
 
-	// Global server context.
-	ctx, ctxCancelFn := context.WithCancel(context.Background())
-
-	db, dbVersion := server.DbConnect(ctx, startupLogger, config)
-	startupLogger.Info("Database information", zap.String("version", dbVersion))
+	db := server.DbConnect(ctx, startupLogger, config, false)
 
 	// Check migration status and fail fast if the schema has diverged.
-	migrate.StartupCheck(startupLogger, db)
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		// handle error from acquiring connection from DB pool
+	}
+
+	err = conn.Raw(func(driverConn any) error {
+		conn := driverConn.(*stdlib.Conn).Conn() // conn is a *pgx.Conn
+		migrate.Check(ctx, startupLogger, conn)
+		return nil
+	})
+	if err != nil {
+		// handle error that occurred while using *pgx.Conn
+	}
 
 	// Access to social provider integrations.
 	socialClient := social.NewClient(logger, 5*time.Second)

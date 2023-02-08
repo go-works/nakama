@@ -49,7 +49,7 @@ var (
 		DiscardUnknown: false,
 	}
 	metrics = NewLocalMetrics(logger, logger, nil, cfg)
-	_       = CheckConfig(logger, cfg)
+	_       = ValidateConfig(logger, cfg)
 )
 
 type DummyMessageRouter struct{}

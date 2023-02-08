@@ -110,8 +110,9 @@ func ParseArgs(logger *zap.Logger, args []string) Config {
 	return mainConfig
 }
 
-func CheckConfig(logger *zap.Logger, config Config) map[string]string {
+func ValidateConfig(logger *zap.Logger, config Config) map[string]string {
 	// Fail fast on invalid values.
+	ValidateConfigDatabase(logger, config)
 	if l := len(config.GetName()); l < 1 || l > 16 {
 		logger.Fatal("Name must be 1-16 characters", zap.String("param", "name"))
 	}
@@ -189,18 +190,6 @@ func CheckConfig(logger *zap.Logger, config Config) map[string]string {
 	}
 	if config.GetSocket().PingPeriodMs >= config.GetSocket().PongWaitMs {
 		logger.Fatal("Ping period value must be less than pong wait value", zap.Int("socket.ping_period_ms", config.GetSocket().PingPeriodMs), zap.Int("socket.pong_wait_ms", config.GetSocket().PongWaitMs))
-	}
-	if len(config.GetDatabase().Addresses) < 1 {
-		logger.Fatal("At least one database address must be specified", zap.Strings("database.address", config.GetDatabase().Addresses))
-	}
-	for _, address := range config.GetDatabase().Addresses {
-		rawURL := fmt.Sprintf("postgresql://%s", address)
-		if _, err := url.Parse(rawURL); err != nil {
-			logger.Fatal("Bad database connection URL", zap.String("database.address", address), zap.Error(err))
-		}
-	}
-	if config.GetDatabase().DnsScanIntervalSec < 1 {
-		logger.Fatal("Database DNS scan interval seconds must be > 0", zap.Int("database.dns_scan_interval_sec", config.GetDatabase().DnsScanIntervalSec))
 	}
 	if config.GetRuntime().GetLuaMinCount() < 0 {
 		logger.Fatal("Minimum Lua runtime instance count must be >= 0", zap.Int("runtime.lua_min_count", config.GetRuntime().GetLuaMinCount()))
@@ -399,6 +388,21 @@ func CheckConfig(logger *zap.Logger, config Config) map[string]string {
 	}
 
 	return configWarnings
+}
+
+func ValidateConfigDatabase(logger *zap.Logger, config Config) {
+	if len(config.GetDatabase().Addresses) < 1 {
+		logger.Fatal("At least one database address must be specified", zap.Strings("database.address", config.GetDatabase().Addresses))
+	}
+	for _, address := range config.GetDatabase().Addresses {
+		rawURL := fmt.Sprintf("postgresql://%s", address)
+		if _, err := url.Parse(rawURL); err != nil {
+			logger.Fatal("Bad database connection URL", zap.String("database.address", address), zap.Error(err))
+		}
+	}
+	if config.GetDatabase().DnsScanIntervalSec < 1 {
+		logger.Fatal("Database DNS scan interval seconds must be > 0", zap.Int("database.dns_scan_interval_sec", config.GetDatabase().DnsScanIntervalSec))
+	}
 }
 
 func convertRuntimeEnv(logger *zap.Logger, existingEnv map[string]string, mergeEnv []string) map[string]string {
