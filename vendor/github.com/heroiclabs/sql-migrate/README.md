@@ -1,11 +1,10 @@
 # sql-migrate
 
-> SQL Schema migration tool for [Go](https://golang.org/). Based on [gorp](https://github.com/go-gorp/gorp) and [goose](https://bitbucket.org/liamstask/goose).
+> SQL Schema migration tool for [Go](https://golang.org/). Works exclusively with [pgx](https://github.com/jackc/pgx) db driver. 
 
 [![Build Status](https://travis-ci.org/rubenv/sql-migrate.svg?branch=master)](https://travis-ci.org/rubenv/sql-migrate) [![GoDoc](https://godoc.org/github.com/rubenv/sql-migrate?status.svg)](https://godoc.org/github.com/rubenv/sql-migrate)
 
 ## Features
-* 
 * Can embed migrations into your application
 * Migrations are defined with SQL for full flexibility
 * Atomic migrations
