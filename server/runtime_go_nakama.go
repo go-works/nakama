@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/heroiclabs/nakama/v3/internal/satori"
 	"os"
 	"strings"
 	"sync"
@@ -58,6 +59,7 @@ type RuntimeGoNakamaModule struct {
 	metrics              Metrics
 	streamManager        StreamManager
 	router               MessageRouter
+	satori               *satori.SatoriClient
 
 	eventFn RuntimeEventCustomFunction
 
@@ -84,6 +86,8 @@ func NewRuntimeGoNakamaModule(logger *zap.Logger, db *sql.DB, protojsonMarshaler
 		metrics:              metrics,
 		streamManager:        streamManager,
 		router:               router,
+
+		satori: satori.NewSatoriClient(config.GetSatori().Url, config.GetSatori().ApiKey, config.GetSatori().SigningKey),
 
 		node: config.GetName(),
 	}
