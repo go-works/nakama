@@ -150,16 +150,16 @@ func main() {
 	// Check migration status and fail fast if the schema has diverged.
 	conn, err := db.Conn(context.Background())
 	if err != nil {
-		// handle error from acquiring connection from DB pool
+		logger.Fatal("Failed to acquire db conn for migration check", zap.Error(err))
 	}
 
 	err = conn.Raw(func(driverConn any) error {
-		conn := driverConn.(*stdlib.Conn).Conn() // conn is a *pgx.Conn
-		migrate.Check(ctx, startupLogger, conn)
+		pgxConn := driverConn.(*stdlib.Conn).Conn() // conn is a *pgx.Conn
+		migrate.Check(ctx, startupLogger, pgxConn)
 		return nil
 	})
 	if err != nil {
-		// handle error that occurred while using *pgx.Conn
+		logger.Fatal("Failed to acquire pgx conn for migration check", zap.Error(err))
 	}
 
 	// Access to social provider integrations.
