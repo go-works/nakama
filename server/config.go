@@ -1005,7 +1005,8 @@ func (iapg *IAPGoogleConfig) Enabled() bool {
 
 type SatoriConfig struct {
 	Url        string `yaml:"url" json:"url" usage:"Satori URL."`
-	ApiKey     string `yaml:"http_key" json:"http_key" usage:"Satori HTTP key."`
+	ApiKeyName string `yaml:"api_key_name" json:"api_key_name" usage:"Satori Api key name."`
+	ApiKey     string `yaml:"api_key" json:"api_key" usage:"Satori Api key."`
 	SigningKey string `yaml:"signing_key" json:"signing_key" usage:"Key used to sign Satori session tokens."`
 }
 
