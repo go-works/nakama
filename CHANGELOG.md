@@ -6,6 +6,7 @@ The format is based on [keep a changelog](http://keepachangelog.com) and this pr
 ## [Unreleased]
 ### Added
 - Add tournament record delete runtime functions and API.
+- Add Satori API integration to all runtimes.
 
 ### Changed
 - Improve graceful shutdown of Google IAP receipt processor.
